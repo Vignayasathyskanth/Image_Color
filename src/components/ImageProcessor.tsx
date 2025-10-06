@@ -89,15 +89,35 @@ export const ImageProcessor = ({ imageFile, onReset }: ImageProcessorProps) => {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
 
-      // Apply warm colorization to grayscale images
+      // Advanced colorization algorithm based on luminance
       for (let i = 0; i < data.length; i += 4) {
         const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        const normalized = gray / 255;
         
-        // Add warm tones: enhance reds and yellows based on brightness
-        const brightness = gray / 255;
-        data[i] = Math.min(255, gray + brightness * 40); // Red channel boost
-        data[i + 1] = Math.min(255, gray + brightness * 20); // Green channel slight boost
-        data[i + 2] = Math.max(0, gray - brightness * 10); // Blue channel slight reduction
+        // Sky/bright areas (blue tones)
+        if (gray > 200) {
+          data[i] = Math.min(255, gray * 0.9);     // R
+          data[i + 1] = Math.min(255, gray * 0.95); // G
+          data[i + 2] = Math.min(255, gray * 1.1);  // B (boost blue)
+        }
+        // Midtones (natural skin/earth tones)
+        else if (gray > 100) {
+          data[i] = Math.min(255, gray * 1.1);      // R (slight boost)
+          data[i + 1] = Math.min(255, gray * 1.05); // G
+          data[i + 2] = Math.min(255, gray * 0.9);  // B (reduce)
+        }
+        // Shadows (cool/blue tones)
+        else if (gray > 50) {
+          data[i] = Math.min(255, gray * 0.95);     // R
+          data[i + 1] = Math.min(255, gray * 1.0);  // G
+          data[i + 2] = Math.min(255, gray * 1.05); // B (slight boost)
+        }
+        // Deep shadows (maintain darkness with slight blue)
+        else {
+          data[i] = Math.min(255, gray * 0.9);      // R
+          data[i + 1] = Math.min(255, gray * 0.95); // G
+          data[i + 2] = Math.min(255, gray * 1.1);  // B
+        }
       }
 
       ctx.putImageData(imageData, 0, 0);
@@ -105,7 +125,7 @@ export const ImageProcessor = ({ imageFile, onReset }: ImageProcessorProps) => {
       canvas.toBlob((blob) => {
         if (blob) {
           setProcessedUrl(URL.createObjectURL(blob));
-          toast.success("Image colorized with warm tones!");
+          toast.success("Image colorized successfully!");
         }
       });
     } catch (error) {
@@ -174,7 +194,7 @@ export const ImageProcessor = ({ imageFile, onReset }: ImageProcessorProps) => {
           ) : (
             <Palette className="w-5 h-5" />
           )}
-          Add Warm Tones
+          Colorize Image
         </Button>
 
         <Button
