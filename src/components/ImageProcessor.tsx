@@ -71,9 +71,43 @@ export const ImageProcessor = ({ imageFile, onReset }: ImageProcessorProps) => {
     setMode("colorize");
 
     try {
-      toast.info("Colorization with AI will be available after enabling Cloud backend");
-      // Placeholder for AI colorization
-      // Will be implemented with edge function
+      const img = new Image();
+      img.src = URL.createObjectURL(imageFile);
+
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) throw new Error("Canvas context not available");
+
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Apply warm colorization to grayscale images
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        
+        // Add warm tones: enhance reds and yellows based on brightness
+        const brightness = gray / 255;
+        data[i] = Math.min(255, gray + brightness * 40); // Red channel boost
+        data[i + 1] = Math.min(255, gray + brightness * 20); // Green channel slight boost
+        data[i + 2] = Math.max(0, gray - brightness * 10); // Blue channel slight reduction
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          setProcessedUrl(URL.createObjectURL(blob));
+          toast.success("Image colorized with warm tones!");
+        }
+      });
     } catch (error) {
       toast.error("Failed to colorize image");
       console.error(error);
@@ -140,7 +174,7 @@ export const ImageProcessor = ({ imageFile, onReset }: ImageProcessorProps) => {
           ) : (
             <Palette className="w-5 h-5" />
           )}
-          Colorize (AI)
+          Add Warm Tones
         </Button>
 
         <Button
